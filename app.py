@@ -186,6 +186,8 @@ class Database(object):
         if data.get('password'):
             self.cursor.execute('UPDATE user SET password=? WHERE user_id=?', (data.get('password'), user_id))
             self.conn.commit()
+            response['status_code']
+
 
 
 
