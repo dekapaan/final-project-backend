@@ -58,11 +58,51 @@ def init_comment_table():
     conn.execute("CREATE TABLE IF NOT EXISTS comment("
                  "user_id,"
                  "post_id,"
-                 "comment TEXT NOT NULL)")
+                 "comment TEXT NOT NULL,"
+                 "FOREIGN KEY (user_id) REFERENCES user(user_id),"
+                 "FOREIGN KEY (post_id) REFERENCES post(post_id))")
 
     print('post table created successfully')
     conn.close()
 
+
+def init_like_table():
+    conn = sqlite3.connect('polaroid.db')
+    print('opened database successfully')
+
+    conn.execute("CREATE TABLE IF NOT EXISTS like("
+                 "user_id,"
+                 "post_id,"
+                 "FOREIGN KEY (user_id) REFERENCES user(user_id),"
+                 "FOREIGN KEY (post_id) REFERENCES post(post_id))")
+    print('like table create successfully')
+    conn.close()
+
+
+def init_follow_table():
+    conn = sqlite3.connect('polaroid.db')
+    print("opened database successfully")
+
+    conn.execute("CREATE TABLE IF NOT EXISTS follow("
+                 "follower,"
+                 "followed,"
+                 "FOREIGN KEY (follower) REFERENCES user(user_id),"
+                 "FOREIGN KEY (followed) REFERENCES user(user_id)")
+
+    print('table successfully created')
+
+    conn.close()
+
+def init_dm_table():
+    conn = sqlite3.connect('polaroid.db')
+    conn.execute("CREATE TABLE IF NOT EXISTS dm("
+                 "message TEXT NOT NULL,"
+                 "sender,"
+                 "receiver,"
+                 "FOREIGN KEY (sender) REFERENCES user(user_id),"
+                 "FOREIGN KEY (receiver) REFERENCES user(user_id))")
+
+    print("Table created successfully")
 
 def fetch_users():
     with sqlite3.connect('polaroid.db') as conn:
@@ -186,9 +226,6 @@ class Database(object):
         if data.get('password'):
             self.cursor.execute('UPDATE user SET password=? WHERE user_id=?', (data.get('password'), user_id))
             self.conn.commit()
-            response['status_code']
-
-
 
 
 @app.route('/user/', methods=['GET', 'POST'])
@@ -218,6 +255,10 @@ def user(user_id):
     if request.method == 'PUT':
         incoming_data = dict(request.json)
         db.update(user_id, incoming_data)
+        response['status_code'] = 200
+        response['message'] = 'User details updated successfully'
+
+    return response
 
 
 
