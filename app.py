@@ -28,6 +28,7 @@ def init_user_table():
                  "first_name TEXT NOT NULL,"
                  "last_name TEXT NOT NULL,"
                  "profile_img TEXT,"
+                 "bio TEXT,"
                  "email TEXT NOT NULL,"
                  "username TEXT NOT NULL,"
                  "password TEXT NOT NULL)")
@@ -56,6 +57,7 @@ def init_comment_table():
     print("Opened database successfully")
 
     conn.execute("CREATE TABLE IF NOT EXISTS comment("
+                 "comment_id INTEGER PRIMARY KEY AUTOINCREMENT"
                  "user_id,"
                  "post_id,"
                  "comment TEXT NOT NULL,"
@@ -99,6 +101,7 @@ def init_dm_table():
                  "message TEXT NOT NULL,"
                  "sender,"
                  "receiver,"
+                 "date TEXT NOT NULL"
                  "FOREIGN KEY (sender) REFERENCES user(user_id),"
                  "FOREIGN KEY (receiver) REFERENCES user(user_id))")
 
@@ -227,9 +230,41 @@ class Database(object):
             self.cursor.execute('UPDATE user SET password=? WHERE user_id=?', (data.get('password'), user_id))
             self.conn.commit()
 
+    def delete_user(self, user_id):
+        self.cursor.execute("DELETE FROM like WHERE user_id='{}'".format(user_id))
+        self.cursor.execute("DELETE FROM dm WHERE sender ='{}'".format(user_id))
+        self.cursor.execute("DELETE FROM dm WHERE receiver ='{}'".format(user_id))
+        self.cursor.execute("DELETE FROM comment WHERE user_id ='{}'".format(user_id))
+        self.cursor.execute("DELETE FROM post WHERE user_id ='{}'".format(user_id))
+        self.cursor.execute("DELETE FROM follow WHERE follower='{}'".format(user_id))
+        self.cursor.execute("DELETE FROM follow WHERE followed='{}'".format(user_id))
+        self.cursor.execute("DELETE FROM user WHERE user_id='{}'".format(user_id))
+        self.conn.commit()
+
+    def like(self, user_id, post_id):
+        self.cursor.execute('INSERT INTO like('
+                            'post_id,'
+                            'user_id,'
+                            ') VALUES (?, ?)', (user_id, post_id))
+
+        self.conn.commit()
+
+    def unlike(self, user_id, post_id):
+        self.cursor.execute("DELETE FROM like WHERE post_id=? AND user_id=?", (post_id, user_id))
+        self.conn.commit()
+
+    def add_comment(self, post_id, user_id, comment):
+        self.cursor.execute('INSERT INTO comment (user_id, post_id, comment) VALUES (?, ?, ?)', (user_id, post_id,
+                                                                                                 comment))
+        self.conn.commit()
+
+    def delete_comment(self, comment_id):
+        self.cursor.execute("DELETE FROM comment WHERE comment_id='{}'".format(comment_id))
+        self.conn.commit()
+
 
 @app.route('/user/', methods=['GET', 'POST'])
-@app.route('/user/<int:user_id>/', methods=['PUT'])
+@app.route('/user/<int:user_id>/', methods=['PATCH', 'PUT'])
 def user(user_id):
     response = {}
     db = Database()
@@ -252,13 +287,47 @@ def user(user_id):
         response['message'] = "User retrieved successfully"
         response['user'] = db.login(request.json('user_id'))
 
-    if request.method == 'PUT':
+    if request.method == 'PATCH':
         incoming_data = dict(request.json)
         db.update(user_id, incoming_data)
         response['status_code'] = 200
         response['message'] = 'User details updated successfully'
 
+    if request.method == 'PUT':
+        db.delete_user(user_id)
+        response['status_code'] = 200
+        response['message'] = 'User deleted successfully'
+
     return response
 
 
+@app.route('/like/<int:post_id>/', methods=['POST', 'PATCH'])
+def like(post_id):
+    response = {}
+    db = Database()
+    user_id = request.json('user_id')
+
+    if request.method == 'PATCH':
+        db.like(user_id, post_id)
+
+        response['status_code'] = 200
+        response['message'] = 'Like successful'
+
+    if request.method == 'POST':
+        db.unlike(user_id, post_id)
+
+        response['status_code'] = 200
+        response['message'] = 'Unlike successful'
+
+    return response
+
+
+# @app.route('/comment/<int:comment_id>/', methods=['POST'])
+# def comment(comment_id):
+#     response = {}
+#     db = Database()
+#
+#
+#     if request.method == 'POST':
+#         db.add_comment()
 
