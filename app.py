@@ -30,7 +30,7 @@ def init_user_table():
                  "profile_img TEXT,"
                  "bio TEXT,"
                  "email TEXT NOT NULL,"
-                 "username TEXT NOT NULL,"
+                 "username TEXT UNIQUE NOT NULL,"
                  "password TEXT NOT NULL)")
     print("user table created successfully")
     conn.close()
@@ -42,7 +42,7 @@ def init_post_table():
     print("Opened database successfully")
 
     conn.execute("CREATE TABLE IF NOT EXISTS post("
-                 "user_id"
+                 "user_id INTEGER,"
                  "post_id INTEGER PRIMARY KEY AUTOINCREMENT,"
                  "post_img TEXT NOT NULL,"
                  "caption TEXT NOT NULL,"
@@ -57,10 +57,11 @@ def init_comment_table():
     print("Opened database successfully")
 
     conn.execute("CREATE TABLE IF NOT EXISTS comment("
-                 "comment_id INTEGER PRIMARY KEY AUTOINCREMENT"
+                 "comment_id INTEGER PRIMARY KEY AUTOINCREMENT,"
                  "user_id,"
                  "post_id,"
                  "comment TEXT NOT NULL,"
+                 "notification BOOLEAN NOT NULL,"
                  "FOREIGN KEY (user_id) REFERENCES user(user_id),"
                  "FOREIGN KEY (post_id) REFERENCES post(post_id))")
 
@@ -75,6 +76,7 @@ def init_like_table():
     conn.execute("CREATE TABLE IF NOT EXISTS like("
                  "user_id,"
                  "post_id,"
+                 "notification BOOLEAN NOT NULL,"
                  "FOREIGN KEY (user_id) REFERENCES user(user_id),"
                  "FOREIGN KEY (post_id) REFERENCES post(post_id))")
     print('like table create successfully')
@@ -86,10 +88,11 @@ def init_follow_table():
     print("opened database successfully")
 
     conn.execute("CREATE TABLE IF NOT EXISTS follow("
-                 "follower,"
-                 "followed,"
+                 "follower INTEGER,"
+                 "followed INTEGER,"
+                 "notification BOOLEAN NOT NULL,"
                  "FOREIGN KEY (follower) REFERENCES user(user_id),"
-                 "FOREIGN KEY (followed) REFERENCES user(user_id)")
+                 "FOREIGN KEY (followed) REFERENCES user(user_id))")
 
     print('table successfully created')
 
@@ -101,11 +104,19 @@ def init_dm_table():
                  "message TEXT NOT NULL,"
                  "sender,"
                  "receiver,"
-                 "date TEXT NOT NULL"
+                 "date TEXT NOT NULL,"
+                 "notification BOOLEAN NOT NULL,"
                  "FOREIGN KEY (sender) REFERENCES user(user_id),"
                  "FOREIGN KEY (receiver) REFERENCES user(user_id))")
 
     print("Table created successfully")
+
+init_user_table()
+init_post_table()
+init_comment_table()
+init_like_table()
+init_follow_table()
+init_dm_table()
 
 def fetch_users():
     with sqlite3.connect('polaroid.db') as conn:
@@ -120,17 +131,18 @@ def fetch_users():
     return new_data
 
 
+users = fetch_users()
+username_table = {u.username: u for u in users}
+userid_table = {u.id: u for u in users}
+
+
 def authenticate(username, password):
-    users = fetch_users()
-    username_table = {u.username: u for u in users}
     user = username_table.get(username, None)
     if user and hmac.compare_digest(user.password.encode('utf-8'), password.encode('utf-8')):
         return user
 
 
 def identity(payload):
-    users = fetch_users()
-    userid_table = {u.id: u for u in users}
     user_id = payload['identity']
     return userid_table.get(user_id, None)
 
@@ -182,7 +194,7 @@ class Database(object):
         self.cursor.execute('INSERT INTO user ('
                             'first_name,'
                             'last_name,'
-                            'profile_img'
+                            'profile_img,'
                             'email,'
                             'username,'
                             'password) VALUES(?, ?, ?, ?, ?, ?)', (first_name, last_name, upload_result['url'], email,
@@ -241,6 +253,30 @@ class Database(object):
         self.cursor.execute("DELETE FROM user WHERE user_id='{}'".format(user_id))
         self.conn.commit()
 
+    def follow(self, follower, followed):
+        self.cursor.execute('INSERT into follow ('
+                            'follower,'
+                            'followed'
+                            ') VALUES (? ,?)', (follower, followed))
+
+        self.conn.commit()
+
+    def unfollow(self, follower, followed):
+        self.cursor.execute('DELETE FROM follow WHERE followed=? and follower=?', (followed, follower))
+        self.conn.commit()
+
+    def get_followers(self, user_id):
+        self.cursor.execute("SELECT follower FROM follow WHERE followed='{}'".format(user_id))
+        followers = self.cursor.fetchall()
+
+        return followers
+
+    def get_following(self, user_id):
+        self.cursor.execute("SELECT followed FROM follow WHERE follower='{}'".format(user_id))
+        following = self.cursor.fetchall()
+
+        return following
+
     def like(self, user_id, post_id):
         self.cursor.execute('INSERT INTO like('
                             'post_id,'
@@ -253,6 +289,10 @@ class Database(object):
         self.cursor.execute("DELETE FROM like WHERE post_id=? AND user_id=?", (post_id, user_id))
         self.conn.commit()
 
+    def get_likes(self, post_id):
+        self.cursor.execute("SELECT * FROM like WHERE post_id='{}'".format(post_id))
+        return self.cursor.fetchall()
+
     def add_comment(self, post_id, user_id, comment):
         self.cursor.execute('INSERT INTO comment (user_id, post_id, comment) VALUES (?, ?, ?)', (user_id, post_id,
                                                                                                  comment))
@@ -262,58 +302,113 @@ class Database(object):
         self.cursor.execute("DELETE FROM comment WHERE comment_id='{}'".format(comment_id))
         self.conn.commit()
 
+    def get_comments(self, post_id):
+        self.cursor.execute("SELECT * FROM like WHERE post_id='{}'".format(post_id))
+        return self.cursor.fetchall()
 
-@app.route('/user/', methods=['GET', 'POST'])
-@app.route('/user/<int:user_id>/', methods=['PATCH', 'PUT'])
-def user(user_id):
+
+@app.route('/user/', methods=['POST'])
+def register():
     response = {}
     db = Database()
 
     if request.method == 'POST':
-        first_name = request.json('first_name')
-        last_name = request.json('last_name')
-        profile_img = request.json('profile_img')
-        email = request.json('email')
-        username = request.json('username')
-        password = request.json('password')
+        first_name = request.form['first_name']
+        last_name = request.form['last_name']
+        profile_img = request.files['profile_img']
+        email = request.form['email']
+        username = request.form['username']
+        password = request.form['password']
 
         db.register(first_name, last_name, profile_img, email, username, password)
+
+        global users
+        users = fetch_users()
 
         response['status_code'] = 200
         response['message'] = "User registered successfully"
 
+    return response
+
+
+@app.route('/user/<int:user_id>', methods=['GET', 'PATCH', 'PUT'])
+def user(user_id):
+    response = {}
+    db = Database()
+
     if request.method == 'GET':
         response['status_code'] = 200
         response['message'] = "User retrieved successfully"
-        response['user'] = db.login(request.json('user_id'))
+        response['user'] = db.login(user_id)
 
     if request.method == 'PATCH':
         incoming_data = dict(request.json)
         db.update(user_id, incoming_data)
+
         response['status_code'] = 200
         response['message'] = 'User details updated successfully'
 
     if request.method == 'PUT':
         db.delete_user(user_id)
+
         response['status_code'] = 200
         response['message'] = 'User deleted successfully'
+
+    global users
+    users = fetch_users()
 
     return response
 
 
-@app.route('/like/<int:post_id>/', methods=['POST', 'PATCH'])
+@app.route('/follow/', methods=['GET', 'POST', 'PATCH'])
+def follow():
+    response = {}
+
+    db = Database()
+
+    if request.method == 'GET':
+        user_id = request.json['user_id']
+        response['followers'] = db.get_following(user_id)
+        response['following'] = db.get_followers(user_id)
+        response['status_code'] = 200
+        response['message'] = 'User follow info retrieved successfully'
+
+    if request.method == "POST":
+        follower = request.json['follower']
+        followed = request.json['followed']
+        db.follow(follower, followed)
+        response['status_code'] = 200
+        response['message'] = 'Follow interaction successful'
+
+    if request.method == "PATCH":
+        follower = request.json['follower']
+        followed = request.json['followed']
+        db.unfollow(follower, followed)
+        response['status_code'] = 200
+        response['message'] = 'Unfollow interaction successful'
+
+    return response
+
+
+@app.route('/like/<int:post_id>/', methods=['GET', 'POST', 'PATCH'])
+@jwt_required()
 def like(post_id):
     response = {}
     db = Database()
-    user_id = request.json('user_id')
+    user_id = request.json['user_id']
 
-    if request.method == 'PATCH':
+    if request.method == 'GET':
+        response['status_code'] = 200
+        response['message'] = 'Retrieved like information successfully'
+        response['like_data'] = db.get_likes(post_id)
+
+    if request.method == 'POST':
         db.like(user_id, post_id)
 
         response['status_code'] = 200
         response['message'] = 'Like successful'
 
-    if request.method == 'POST':
+    if request.method == 'PATCH':
         db.unlike(user_id, post_id)
 
         response['status_code'] = 200
@@ -322,12 +417,44 @@ def like(post_id):
     return response
 
 
-# @app.route('/comment/<int:comment_id>/', methods=['POST'])
-# def comment(comment_id):
-#     response = {}
-#     db = Database()
-#
-#
-#     if request.method == 'POST':
-#         db.add_comment()
+@app.route('/comment/<int:comment_id>/', methods=['POST', 'PATCH'])
+@jwt_required()
+def comment(comment_id):
+    response = {}
+    db = Database()
 
+    if request.method == 'POST':
+        post_id = request.json('post_id')
+        comment = request.json('comment')
+        user_id = request.json('user_id')
+
+        db.add_comment(post_id, user_id, comment)
+
+        response['status_code'] = 200
+        response['message'] = 'Comment added successfully'
+
+    if request.json == 'PATCH':
+        db.delete_comment(comment_id)
+
+        response['status_code'] = 200
+        response['message'] = 'Comment deleted successfully'
+
+    return response
+
+
+@app.route('/comment/<int:post_id>/', methods=['GET'])
+def get_comment(post_id):
+    response = {}
+    db = Database()
+
+    if request.method == 'GET':
+        db.get_comments(post_id)
+
+        response['status_code'] = 200
+        response['message'] = 'Comments retrieved successfully'
+
+
+
+
+if __name__ == '__main__':
+    app.run(debug=True)
