@@ -353,7 +353,7 @@ def login(username):
         response['message'] = 'User retrieved successfully'
         response['user'] = db.login(username)
 
-
+    return response
 
 
 @app.route('/user/<int:user_id>', methods=['GET', 'PATCH', 'PUT'])
