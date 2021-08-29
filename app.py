@@ -203,8 +203,8 @@ class Database(object):
 
         return "success"
 
-    def login(self, username, password):
-        self.cursor.execute("SELECT * FROM user WHERE username=? AND password=?", (username, password))
+    def login(self, username):
+        self.cursor.execute("SELECT * FROM user WHERE username='{}'", (username))
         return self.cursor.fetchall()
 
     def get_user(self, user_id):
@@ -324,13 +324,6 @@ def register():
     response = {}
     db = Database()
 
-    if request.method == 'GET':
-        username = request.json('username')
-        password = request.json('password')
-        response['status_code'] = 200
-        response['message'] = 'User retrieved successfully'
-        response['user'] = db.login(username, password)
-
     if request.method == 'POST':
         first_name = request.form['first_name']
         last_name = request.form['last_name']
@@ -348,6 +341,21 @@ def register():
         response['message'] = "User registered successfully"
 
     return response
+
+
+@app.route('/user/<username>')
+def login(username):
+    response = {}
+    db = Database()
+
+    if request.method == 'GET':
+        username = request.json('username')
+        password = request.json('password')
+        response['status_code'] = 200
+        response['message'] = 'User retrieved successfully'
+        response['user'] = db.login(username)
+
+
 
 
 @app.route('/user/<int:user_id>', methods=['GET', 'PATCH', 'PUT'])
