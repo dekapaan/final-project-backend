@@ -185,23 +185,22 @@ class Database(object):
         self.conn = sqlite3.connect('polaroid.db')
         self.cursor = self.conn.cursor()
 
-    def register(self, first_name, last_name, profile_img, email, username, password):
-        cloudinary.config(cloud_name='ddvdj4vy6', api_key='416417923523248',
-                          api_secret='v_bGoSt-EgCYGO2wIkFKRERvqZ0')
-        upload_result = None
-
-        app.logger.info('%s file_to_upload', profile_img)
-        if profile_img:
-            upload_result = cloudinary.uploader.upload(profile_img)  # Upload results
-            app.logger.info(upload_result)
+    def register(self, first_name, last_name, email, username, password):
+        # cloudinary.config(cloud_name='ddvdj4vy6', api_key='416417923523248',
+        #                   api_secret='v_bGoSt-EgCYGO2wIkFKRERvqZ0')
+        # upload_result = None
+        #
+        # app.logger.info('%s file_to_upload', profile_img)
+        # if profile_img:
+        #     upload_result = cloudinary.uploader.upload(profile_img)  # Upload results
+        #     app.logger.info(upload_result)
 
         self.cursor.execute('INSERT INTO user ('
                             'first_name,'
                             'last_name,'
-                            'profile_img,'
                             'email,'
                             'username,'
-                            'password) VALUES(?, ?, ?, ?, ?, ?)', (first_name, last_name, upload_result['url'], email,
+                            'password) VALUES(?, ?, ?, ?, ?, ?)', (first_name, last_name, email,
                                                                    username, password))
         self.conn.commit()
 
@@ -339,12 +338,11 @@ def register():
     if request.method == 'POST':
         first_name = request.form['first_name']
         last_name = request.form['last_name']
-        profile_img = request.files['profile_img']
         email = request.form['email']
         username = request.form['username']
         password = request.form['password']
 
-        db.register(first_name, last_name, profile_img, email, username, password)
+        db.register(first_name, last_name, email, username, password)
 
         global users
         users = fetch_users()

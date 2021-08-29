@@ -7,9 +7,6 @@ function Login() {
     .then((res) => res.json())
     .then((data) => {
       console.log(data);
-      if (data) {
-        getToken();
-      }
     });
 }
 
@@ -27,10 +24,13 @@ function getToken() {
     .then((res) => res.json())
     .then((data) => {
       console.log(data);
+      if (data) {
+        Login();
+      }
     });
 }
 
 document.getElementById("loginForm").addEventListener("submit", (e) => {
   e.preventDefault();
-  Login();
+  getToken();
 });
