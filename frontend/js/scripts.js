@@ -1,14 +1,15 @@
 function Login() {
-  fetch(`https://frozen-beyond-41947.herokuapp.com/user/`, {
-    method: "get",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      username: document.getElementById("logUsername").value,
-      password: document.getElementById("logPassword").value,
-    }),
-  })
+  fetch(
+    `https://frozen-beyond-41947.herokuapp.com/user/${
+      document.getElementById("logUsername").value
+    }/`,
+    {
+      method: "get",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    }
+  )
     .then((res) => res.json())
     .then((data) => {
       console.log(data);

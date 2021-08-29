@@ -319,7 +319,7 @@ class Database(object):
         return self.cursor.fetchall()
 
 
-@app.route('/user/', methods=['GET', 'POST'])
+@app.route('/user/', methods=['POST'])
 def register():
     response = {}
     db = Database()
@@ -349,8 +349,6 @@ def login(username):
     db = Database()
 
     if request.method == 'GET':
-        username = request.json('username')
-        password = request.json('password')
         response['status_code'] = 200
         response['message'] = 'User retrieved successfully'
         response['user'] = db.login(username)
