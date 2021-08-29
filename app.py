@@ -336,11 +336,11 @@ def register():
     db = Database()
 
     if request.method == 'POST':
-        first_name = request.form['first_name']
-        last_name = request.form['last_name']
-        email = request.form['email']
-        username = request.form['username']
-        password = request.form['password']
+        first_name = request.json['first_name']
+        last_name = request.json['last_name']
+        email = request.json['email']
+        username = request.json['username']
+        password = request.json['password']
 
         db.register(first_name, last_name, email, username, password)
 
