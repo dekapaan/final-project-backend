@@ -127,7 +127,7 @@ def fetch_users():
         new_data = []
 
         for data in users:
-            new_data.append(User(data[0], data[4], data[5]))
+            new_data.append(User(data[0], data[6], data[7]))
     return new_data
 
 
