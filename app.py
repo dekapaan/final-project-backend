@@ -204,8 +204,8 @@ class Database(object):
         return "success"
 
     def login(self, username):
-        self.cursor.execute("SELECT * FROM user WHERE username='{}'", (username))
-        return self.cursor.fetchall()
+        self.cursor.execute("SELECT * FROM user WHERE username='{}'".format(username))
+        return self.cursor.fetchone()
 
     def get_user(self, user_id):
         self.cursor.execute("SELECT * FROM user WHERE user_id='{}'".format(user_id))
@@ -260,6 +260,14 @@ class Database(object):
     def post(self, user_id, caption, img):
         self.cursor.execute('INSERT INTO post (user_id, post_img, caption) VALUES(?, ?, ?)', (user_id, caption, img))
         self.conn.commit()
+
+    def get_post(self, post_id):
+        self.cursor.execute("SELECT * FROM post WHERE post_id='{}'".format(post_id))
+        return self.cursor.fetchone()
+
+    def get_follow_posts(self, user_id_list):
+        self.cursor.execute("SELECT * FROM post WHERE user_id IN ({})".format(user_id_list))
+        return self.cursor.fetchall()
 
     def delete_post(self, post_id):
         self.cursor.execute("DELETE FROM post WHERE post_id='{}'".format(post_id))
