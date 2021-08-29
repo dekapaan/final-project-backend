@@ -200,7 +200,7 @@ class Database(object):
                             'last_name,'
                             'email,'
                             'username,'
-                            'password) VALUES(?, ?, ?, ?, ?, ?)', (first_name, last_name, email,
+                            'password) VALUES(?, ?, ?, ?, ?)', (first_name, last_name, email,
                                                                    username, password))
         self.conn.commit()
 
