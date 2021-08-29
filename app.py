@@ -29,7 +29,7 @@ def init_user_table():
                  "last_name TEXT NOT NULL,"
                  "profile_img TEXT,"
                  "bio TEXT,"
-                 "email TEXT NOT NULL,"
+                 "email TEXT UNIQUE NOT NULL,"
                  "username TEXT UNIQUE NOT NULL,"
                  "password TEXT NOT NULL)")
     print("user table created successfully")
@@ -61,7 +61,7 @@ def init_comment_table():
                  "user_id,"
                  "post_id,"
                  "comment TEXT NOT NULL,"
-                 "notification BOOLEAN NOT NULL,"
+                 "seen BOOLEAN NOT NULL,"
                  "FOREIGN KEY (user_id) REFERENCES user(user_id),"
                  "FOREIGN KEY (post_id) REFERENCES post(post_id))")
 
@@ -76,7 +76,7 @@ def init_like_table():
     conn.execute("CREATE TABLE IF NOT EXISTS like("
                  "user_id,"
                  "post_id,"
-                 "notification BOOLEAN NOT NULL,"
+                 "seen BOOLEAN NOT NULL,"
                  "FOREIGN KEY (user_id) REFERENCES user(user_id),"
                  "FOREIGN KEY (post_id) REFERENCES post(post_id))")
     print('like table create successfully')
@@ -90,7 +90,7 @@ def init_follow_table():
     conn.execute("CREATE TABLE IF NOT EXISTS follow("
                  "follower INTEGER,"
                  "followed INTEGER,"
-                 "notification BOOLEAN NOT NULL,"
+                 "seen BOOLEAN NOT NULL,"
                  "FOREIGN KEY (follower) REFERENCES user(user_id),"
                  "FOREIGN KEY (followed) REFERENCES user(user_id))")
 
@@ -101,11 +101,11 @@ def init_follow_table():
 def init_dm_table():
     conn = sqlite3.connect('polaroid.db')
     conn.execute("CREATE TABLE IF NOT EXISTS dm("
+                 "dm_id INT PRIMARY KEY AUTOINCREMENT,"
                  "message TEXT NOT NULL,"
-                 "sender,"
-                 "receiver,"
-                 "date TEXT NOT NULL,"
-                 "notification BOOLEAN NOT NULL,"
+                 "sender_id,"
+                 "receiver_id,"
+                 "seen BOOLEAN NOT NULL,"
                  "FOREIGN KEY (sender) REFERENCES user(user_id),"
                  "FOREIGN KEY (receiver) REFERENCES user(user_id))")
 
@@ -251,6 +251,14 @@ class Database(object):
         self.cursor.execute("DELETE FROM follow WHERE follower='{}'".format(user_id))
         self.cursor.execute("DELETE FROM follow WHERE followed='{}'".format(user_id))
         self.cursor.execute("DELETE FROM user WHERE user_id='{}'".format(user_id))
+        self.conn.commit()
+
+    def post(self, user_id, caption, img):
+        self.cursor.execute('INSERT INTO post (user_id, post_img, caption) VALUES(?, ?, ?)', (user_id, caption, img))
+        self.conn.commit()
+
+    def delete_post(self, post_id):
+        self.cursor.execute("DELETE FROM post WHERE post_id='{}'".format(post_id))
         self.conn.commit()
 
     def follow(self, follower, followed):
