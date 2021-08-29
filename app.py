@@ -183,7 +183,14 @@ def protected():
 class Database(object):
     def __init__(self):
         self.conn = sqlite3.connect('polaroid.db')
+        self.conn.row_factory = self.dict_factory
         self.cursor = self.conn.cursor()
+
+    def dict_factory(self, cursor, row):
+        d = {}
+        for idx, col in enumerate(cursor.description):
+            d[col[0]] = row[idx]
+        return d
 
     def register(self, first_name, last_name, email, username, password):
         # cloudinary.config(cloud_name='ddvdj4vy6', api_key='416417923523248',
@@ -329,6 +336,10 @@ class Database(object):
         self.cursor.execute("SELECT * FROM like WHERE post_id='{}'".format(post_id))
         return self.cursor.fetchall()
 
+    def search(self, username_string):
+        self.cursor.execute("SELECT * FROM user WHERE username LIKE '{}%'".format(username_string))
+        return self.cursor.fetchall()
+
 
 @app.route('/user/', methods=['POST'])
 def register():
@@ -393,6 +404,20 @@ def user(user_id):
     users = fetch_users()
 
     return response
+
+@app.route('/search/<username_query>/')
+def search(username_query):
+    response = {}
+
+    db = Database()
+
+    if request.method == "GET":
+        response['users'] = db.search(username_query)
+        response['status_code'] = 200
+        response['message'] = 'Search query successful'
+
+    return response
+
 
 
 @app.route('/follow/', methods=['GET', 'POST', 'PATCH'])
