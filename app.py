@@ -347,9 +347,9 @@ class Database(object):
         self.cursor.execute("SELECT * FROM like WHERE post_id='{}'".format(post_id))
         return self.cursor.fetchall()
 
-    def add_comment(self, post_id, user_id, comment):
-        self.cursor.execute('INSERT INTO comment (user_id, post_id, comment) VALUES (?, ?, ?)', (user_id, post_id,
-                                                                                                 comment))
+    def add_comment(self, post_id, user_id, username, comment):
+        self.cursor.execute('INSERT INTO comment (user_id, username, post_id, comment, seen) VALUES (?, ?, ?, ?, 0)',
+                            (user_id, username, post_id, comment))
         self.conn.commit()
 
     def delete_comment(self, comment_id):
@@ -578,21 +578,30 @@ def like(post_id):
     return response
 
 
-@app.route('/comment/<int:comment_id>/', methods=['POST', 'PATCH'])
-@jwt_required()
-def comment(comment_id):
+@app.route('/comment/', methods=['POST', 'PATCH'])
+def comment():
     response = {}
     db = Database()
 
     if request.method == 'POST':
-        post_id = request.json('post_id')
-        comment = request.json('comment')
-        user_id = request.json('user_id')
+        post_id = request.json['post_id']
+        comment = request.json['comment']
+        user_id = request.json['user_id']
+        username = request.json['username']
 
-        db.add_comment(post_id, user_id, comment)
+        db.add_comment(post_id, user_id, username, comment)
 
         response['status_code'] = 200
         response['message'] = 'Comment added successfully'
+
+    return response
+
+
+@app.route('/comment/<int:comment_id>/', methods=['PATCH'])
+@jwt_required()
+def delete_comment(comment_id):
+    response = {}
+    db = Database()
 
     if request.json == 'PATCH':
         db.delete_comment(comment_id)
