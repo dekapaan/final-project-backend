@@ -43,9 +43,11 @@ def init_post_table():
 
     conn.execute("CREATE TABLE IF NOT EXISTS post("
                  "user_id INTEGER,"
+                 "username,"
                  "post_id INTEGER PRIMARY KEY AUTOINCREMENT,"
                  "post_img TEXT NOT NULL,"
                  "caption TEXT NOT NULL,"
+                 "FOREIGN KEY (username) REFERENCES user(username),"
                  "FOREIGN KEY (user_id) REFERENCES user(user_id))")
 
     print('post table created successfully')
@@ -59,10 +61,12 @@ def init_comment_table():
     conn.execute("CREATE TABLE IF NOT EXISTS comment("
                  "comment_id INTEGER PRIMARY KEY AUTOINCREMENT,"
                  "user_id,"
+                 "username,"
                  "post_id,"
                  "comment TEXT NOT NULL,"
                  "seen BOOLEAN NOT NULL,"
                  "FOREIGN KEY (user_id) REFERENCES user(user_id),"
+                 "FOREIGN KEY (username) REFERENCES user(username),"
                  "FOREIGN KEY (post_id) REFERENCES post(post_id))")
 
     print('post table created successfully')
@@ -101,13 +105,17 @@ def init_follow_table():
 def init_dm_table():
     conn = sqlite3.connect('polaroid.db')
     conn.execute("CREATE TABLE IF NOT EXISTS dm("
-                 "dm_id INT PRIMARY KEY AUTOINCREMENT,"
+                 "dm_id INTEGER PRIMARY KEY AUTOINCREMENT,"
                  "message TEXT NOT NULL,"
                  "sender_id,"
+                 "sender_username,"
                  "receiver_id,"
+                 "receiver_username,"
                  "seen BOOLEAN NOT NULL,"
-                 "FOREIGN KEY (sender) REFERENCES user(user_id),"
-                 "FOREIGN KEY (receiver) REFERENCES user(user_id))")
+                 "FOREIGN KEY (sender_id) REFERENCES user(user_id),"
+                 "FOREIGN KEY (sender_username) REFERENCES user(username),"
+                 "FOREIGN KEY (receiver_id) REFERENCES user(user_id),"
+                 "FOREIGN KEY (receiver_username) REFERENCES user(username))")
 
     print("Table created successfully")
 
@@ -267,8 +275,18 @@ class Database(object):
         self.cursor.execute("DELETE FROM user WHERE user_id='{}'".format(user_id))
         self.conn.commit()
 
-    def post(self, user_id, caption, img):
-        self.cursor.execute('INSERT INTO post (user_id, post_img, caption) VALUES(?, ?, ?)', (user_id, caption, img))
+    def post(self, user_id, caption, img, username):
+        cloudinary.config(cloud_name='ddvdj4vy6', api_key='416417923523248',
+                          api_secret='v_bGoSt-EgCYGO2wIkFKRERvqZ0')
+        upload_result = None
+
+        app.logger.info('%s file_to_upload', img)
+        if img:
+            upload_result = cloudinary.uploader.upload(img)  # Upload results
+            app.logger.info(upload_result)
+
+        self.cursor.execute('INSERT INTO post (user_id, caption, post_img, username) VALUES(?, ?, ?, ?)',
+                            (user_id, caption, upload_result['url'], username))
         self.conn.commit()
 
     def get_post(self, post_id):
@@ -276,8 +294,13 @@ class Database(object):
         return self.cursor.fetchone()
 
     def get_follow_posts(self, user_id_list):
-        self.cursor.execute("SELECT * FROM post WHERE user_id IN ({})".format(user_id_list))
-        return self.cursor.fetchall()
+        posts = []
+
+        for i in range(len(user_id_list)):
+            self.cursor.execute("SELECT * FROM post WHERE user_id={}".format(user_id_list[i]))
+            posts.append(self.cursor.fetchone())
+
+        return posts
 
     def delete_post(self, post_id):
         self.cursor.execute("DELETE FROM post WHERE post_id='{}'".format(post_id))
@@ -286,8 +309,9 @@ class Database(object):
     def follow(self, follower, followed):
         self.cursor.execute('INSERT into follow ('
                             'follower,'
-                            'followed'
-                            ') VALUES (? ,?)', (follower, followed))
+                            'followed,'
+                            'seen'
+                            ') VALUES (? ,?, 0)', (follower, followed))
 
         self.conn.commit()
 
@@ -296,13 +320,13 @@ class Database(object):
         self.conn.commit()
 
     def get_followers(self, user_id):
-        self.cursor.execute("SELECT follower FROM follow WHERE followed='{}'".format(user_id))
+        self.cursor.execute("SELECT follower, seen FROM follow WHERE followed='{}'".format(user_id))
         followers = self.cursor.fetchall()
 
         return followers
 
     def get_following(self, user_id):
-        self.cursor.execute("SELECT followed FROM follow WHERE follower='{}'".format(user_id))
+        self.cursor.execute("SELECT followed, seen FROM follow WHERE follower='{}'".format(user_id))
         following = self.cursor.fetchall()
 
         return following
@@ -419,8 +443,48 @@ def search(username_query):
     return response
 
 
+@app.route('/post/', methods=['GET', 'POST'])
+def post():
+    response = {}
 
-@app.route('/follow/', methods=['GET', 'POST', 'PATCH'])
+    db = Database()
+
+    if request.method == 'POST':
+        user_id = request.form['user_id']
+        caption = request.form['caption']
+        img = request.files['img']
+        username = request.form['username']
+
+        db.post(user_id, caption, img, username)
+        response['status_code'] = 200
+        response['message'] = 'Post made successful'
+
+    if request.method == 'GET':
+        with sqlite3.connect('polaroid.db') as conn:
+            cursor = conn.cursor()
+            cursor.execute('SELECT * FROM post')
+            response['posts'] = cursor.fetchall()
+
+        response['status_code'] = 200
+        response['message'] = 'Posts retrieved successfully'
+
+    return response
+
+
+@app.route('/delete_post/<post_id>', methods=['PATCH'])
+def delete_post(post_id):
+    response = {}
+    db = Database()
+
+    if request.method == "PATCH":
+        db.delete_post(post_id)
+        response['status_code'] = 200
+        response['message'] = "Post deleted successfully"
+
+    return response
+
+
+@app.route('/follow/', methods=['POST', 'PATCH'])
 def follow():
     response = {}
 
@@ -428,8 +492,8 @@ def follow():
 
     if request.method == 'GET':
         user_id = request.json['user_id']
-        response['followers'] = db.get_following(user_id)
-        response['following'] = db.get_followers(user_id)
+        response['followers'] = db.get_followers(user_id)
+        response['following'] = db.get_following(user_id)
         response['status_code'] = 200
         response['message'] = 'User follow info retrieved successfully'
 
@@ -446,6 +510,43 @@ def follow():
         db.unfollow(follower, followed)
         response['status_code'] = 200
         response['message'] = 'Unfollow interaction successful'
+
+    return response
+
+
+@app.route('/follow/<int:user_id>')
+def get_followers(user_id):
+    response = {}
+
+    db = Database()
+
+    if request.method == 'GET':
+        response['followers'] = db.get_followers(user_id)
+        response['following'] = db.get_following(user_id)
+        response['status_code'] = 200
+        response['message'] = 'User follow info retrieved successfully'
+
+    return response
+
+
+@app.route('/posts/<int:user_id>', methods=['GET'])
+def get_posts(user_id):
+    response = {}
+
+    db = Database()
+
+    if request.method == 'GET':
+        user_follow_data = db.get_following(user_id)
+        user_id_list = []
+
+        for i in range(len(user_follow_data)):
+            global user_id_lst
+            user_id_list.append(int(user_follow_data[i]['followed']))
+
+        print(user_id_list)
+        response['status_code'] = 200
+        response['message'] = 'posts retrieved successfully'
+        response['posts'] = db.get_follow_posts(user_id_list)
 
     return response
 
@@ -512,8 +613,6 @@ def get_comment(post_id):
 
         response['status_code'] = 200
         response['message'] = 'Comments retrieved successfully'
-
-
 
 
 if __name__ == '__main__':

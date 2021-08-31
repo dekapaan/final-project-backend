@@ -7,6 +7,13 @@ function Login() {
     .then((res) => res.json())
     .then((data) => {
       console.log(data);
+      user = data.user;
+      console.log(user);
+      let storage = window.localStorage;
+      storage.user_id = user.user_id;
+      storage.username = user.username;
+      storage.profile_img = user.profile_img;
+      window.location = "./home.html";
     });
 }
 
@@ -24,7 +31,7 @@ function getToken() {
     .then((res) => res.json())
     .then((data) => {
       console.log(data);
-      if (data) {
+      if (data.access_token) {
         Login();
       }
     });
