@@ -618,8 +618,7 @@ def get_comment(post_id):
     db = Database()
 
     if request.method == 'GET':
-        db.get_comments(post_id)
-
+        response['comment'] = db.get_comments(post_id)
         response['status_code'] = 200
         response['message'] = 'Comments retrieved successfully'
 
