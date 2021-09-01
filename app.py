@@ -623,6 +623,8 @@ def get_comment(post_id):
         response['status_code'] = 200
         response['message'] = 'Comments retrieved successfully'
 
+    return response
+
 
 if __name__ == '__main__':
     app.run(debug=True)
