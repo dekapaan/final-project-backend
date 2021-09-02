@@ -353,11 +353,11 @@ class Database(object):
         self.conn.commit()
 
     def delete_comment(self, comment_id):
-        self.cursor.execute("DELETE FROM comment WHERE comment_id='{}'".format(comment_id))
+        self.cursor.execute("DELETE FROM comment WHERE comment_id={}".format(comment_id))
         self.conn.commit()
 
     def get_comments(self, post_id):
-        self.cursor.execute("SELECT * FROM like WHERE post_id='{}'".format(post_id))
+        self.cursor.execute("SELECT * FROM comment WHERE post_id={}".format(post_id))
         return self.cursor.fetchall()
 
     def search(self, username_string):
@@ -578,7 +578,7 @@ def like(post_id):
     return response
 
 
-@app.route('/comment/', methods=['POST', 'PATCH'])
+@app.route('/comment/', methods=['POST'])
 def comment():
     response = {}
     db = Database()
@@ -598,12 +598,11 @@ def comment():
 
 
 @app.route('/comment/<int:comment_id>/', methods=['PATCH'])
-@jwt_required()
 def delete_comment(comment_id):
     response = {}
     db = Database()
 
-    if request.json == 'PATCH':
+    if request.method == 'PATCH':
         db.delete_comment(comment_id)
 
         response['status_code'] = 200
