@@ -296,9 +296,17 @@ class Database(object):
     def get_follow_posts(self, user_id_list):
         posts = []
 
+        query = "SELECT * FROM post WHERE "
+
         for i in range(len(user_id_list)):
-            self.cursor.execute("SELECT * FROM post WHERE user_id={}".format(user_id_list[i]))
-            posts.append(self.cursor.fetchall())
+            if i < (len(user_id_list) - 1):
+                query += 'user_id={} OR '.format(user_id_list[i])
+
+            else:
+                query += 'user_id={}'.format(user_id_list[i])
+        print(query)
+        self.cursor.execute(query)
+        posts.append(self.cursor.fetchall())
 
         return posts
 
