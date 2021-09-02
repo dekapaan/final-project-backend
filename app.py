@@ -298,7 +298,7 @@ class Database(object):
 
         for i in range(len(user_id_list)):
             self.cursor.execute("SELECT * FROM post WHERE user_id={}".format(user_id_list[i]))
-            posts.append(self.cursor.fetchone())
+            posts.append(self.cursor.fetchall())
 
         return posts
 
