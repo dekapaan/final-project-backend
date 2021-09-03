@@ -356,6 +356,10 @@ class Database(object):
         self.cursor.execute("SELECT * FROM like WHERE post_id='{}'".format(post_id))
         return self.cursor.fetchall()
 
+    def get_user_likes(self, user_id):
+        self.cursor.execute("SELECT * FROM like WHERE user_id='{}'".format(user_id))
+        return self.cursor.fetchall()
+
     def add_comment(self, post_id, user_id, username, comment):
         self.cursor.execute('INSERT INTO comment (user_id, username, post_id, comment, seen) VALUES (?, ?, ?, ?, 0)',
                             (user_id, username, post_id, comment))
@@ -585,6 +589,18 @@ def like(post_id):
         response['message'] = 'Unlike successful'
 
     return response
+
+
+@app.route('/like/<user_id>/')
+def get_liked_posts(user_id):
+    response = {}
+
+    db = Database()
+
+    if request.method == 'GET':
+        response['likes'] = db.get_user_likes(user_id)
+        response['status_code'] = 200
+        response['message'] = 'Likes retrieved successfully'
 
 
 @app.route('/comment/', methods=['POST'])
