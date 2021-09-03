@@ -560,7 +560,6 @@ def get_posts(user_id):
 
 
 @app.route('/like/<int:post_id>/', methods=['GET', 'POST', 'PATCH'])
-@jwt_required()
 def like(post_id):
     response = {}
     db = Database()
