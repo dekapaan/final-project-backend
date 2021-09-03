@@ -344,7 +344,7 @@ class Database(object):
                             'post_id,'
                             'user_id,'
                             'seen'
-                            ') VALUES (?, ?, 0)', (user_id, post_id))
+                            ') VALUES (?, ?, 0)', (post_id, user_id))
 
         self.conn.commit()
 
@@ -357,7 +357,7 @@ class Database(object):
         return self.cursor.fetchall()
 
     def get_user_likes(self, user_id):
-        self.cursor.execute("SELECT * FROM like WHERE user_id='{}'".format(user_id))
+        self.cursor.execute("SELECT * FROM like WHERE user_id={}".format(user_id))
         return self.cursor.fetchall()
 
     def add_comment(self, post_id, user_id, username, comment):
@@ -591,7 +591,7 @@ def like(post_id):
     return response
 
 
-@app.route('/like/<user_id>/')
+@app.route('/user-like/<user_id>/')
 def get_liked_posts(user_id):
     response = {}
 
@@ -601,6 +601,8 @@ def get_liked_posts(user_id):
         response['likes'] = db.get_user_likes(user_id)
         response['status_code'] = 200
         response['message'] = 'Likes retrieved successfully'
+
+    return response
 
 
 @app.route('/comment/', methods=['POST'])
