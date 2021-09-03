@@ -342,7 +342,7 @@ class Database(object):
     def like(self, user_id, post_id):
         self.cursor.execute('INSERT INTO like('
                             'post_id,'
-                            'user_id,'
+                            'user_id'
                             ') VALUES (?, ?)', (user_id, post_id))
 
         self.conn.commit()
@@ -563,7 +563,6 @@ def get_posts(user_id):
 def like(post_id):
     response = {}
     db = Database()
-    user_id = request.json['user_id']
 
     if request.method == 'GET':
         response['status_code'] = 200
@@ -571,12 +570,14 @@ def like(post_id):
         response['like_data'] = db.get_likes(post_id)
 
     if request.method == 'POST':
+        user_id = request.json['user_id']
         db.like(user_id, post_id)
 
         response['status_code'] = 200
         response['message'] = 'Like successful'
 
     if request.method == 'PATCH':
+        user_id = request.json['user_id']
         db.unlike(user_id, post_id)
 
         response['status_code'] = 200
