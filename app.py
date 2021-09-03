@@ -342,8 +342,9 @@ class Database(object):
     def like(self, user_id, post_id):
         self.cursor.execute('INSERT INTO like('
                             'post_id,'
-                            'user_id'
-                            ') VALUES (?, ?)', (user_id, post_id))
+                            'user_id,'
+                            'seen'
+                            ') VALUES (?, ?, 0)', (user_id, post_id))
 
         self.conn.commit()
 
