@@ -523,30 +523,27 @@ def delete_post(post_id):
     return response
 
 
-@app.route('/follow/', methods=['POST', 'PATCH'])
-def follow():
+@app.route('/follow/<int:user_id/>', methods=['GET', 'POST', 'PATCH'])
+def follow(user_id):
     response = {}
 
     db = Database()
 
     if request.method == 'GET':
-        user_id = request.json['user_id']
         response['followers'] = db.get_followers(user_id)
         response['following'] = db.get_following(user_id)
         response['status_code'] = 200
         response['message'] = 'User follow info retrieved successfully'
 
     if request.method == "POST":
-        follower = request.json['follower']
         followed = request.json['followed']
-        db.follow(follower, followed)
+        db.follow(user_id, followed)
         response['status_code'] = 200
         response['message'] = 'Follow interaction successful'
 
     if request.method == "PATCH":
-        follower = request.json['follower']
         followed = request.json['followed']
-        db.unfollow(follower, followed)
+        db.unfollow(user_id, followed)
         response['status_code'] = 200
         response['message'] = 'Unfollow interaction successful'
 
