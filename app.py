@@ -293,6 +293,10 @@ class Database(object):
         self.cursor.execute("SELECT * FROM post WHERE post_id='{}'".format(post_id))
         return self.cursor.fetchone()
 
+    def get_user_posts(self, user_id):
+        self.cursor.execute("SELECT * FROM post WHERE user_id='{}'".format(user_id))
+        return self.cursor.fetchall()
+
     def get_follow_posts(self, user_id_list):
         posts = []
 
@@ -480,6 +484,19 @@ def post():
 
         response['status_code'] = 200
         response['message'] = 'Posts retrieved successfully'
+
+    return response
+
+@app.route('/post/<user_id>/', methods=['GET'])
+def get_user_post(user_id):
+    response = {}
+
+    db = Database()
+
+    if request.method == 'GET':
+        response['posts'] = db.get_user_posts(user_id)
+        response['status_code'] = 200
+        response['message'] = 'Posts fetched successfully'
 
     return response
 
