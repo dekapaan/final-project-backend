@@ -523,7 +523,7 @@ def delete_post(post_id):
     return response
 
 
-@app.route('/follow/<int:user_id/>', methods=['GET', 'POST', 'PATCH'])
+@app.route('/follow/<int:user_id>/', methods=['GET', 'POST', 'PATCH'])
 def follow(user_id):
     response = {}
 
