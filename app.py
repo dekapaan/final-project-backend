@@ -298,8 +298,8 @@ class Database(object):
         self.cursor.execute("SELECT user_id, profile_img FROM user where username='{}'".format(username))
         user['user'] = self.cursor.fetchall()
 
-        user['followers'] = self.get_followers(user['user'][0])
-        user['following'] = self.get_following(user['user'][0])
+        user['followers'] = self.get_followers(user['user'][0]['user_id'])
+        user['following'] = self.get_following(user['user'][0]['user_id'])
 
         self.cursor.execute("SELECT * FROM post WHERE username='{}'".format(username))
         user['posts'] = self.cursor.fetchall()
