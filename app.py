@@ -487,7 +487,7 @@ def post():
 
     return response
 
-@app.route('/post/<user_id>/', methods=['GET'])
+@app.route('/post/<int:user_id>/', methods=['GET'])
 def get_user_post(user_id):
     response = {}
 
