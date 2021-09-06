@@ -493,7 +493,7 @@ def post():
 
     return response
 
-@app.route('/user-info/<int:username>/', methods=['GET'])
+@app.route('/user-info/<username>/', methods=['GET'])
 def get_user_post(username):
     response = {}
 
