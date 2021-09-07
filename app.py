@@ -476,10 +476,10 @@ def post():
     db = Database()
 
     if request.method == 'POST':
-        user_id = request.form['user_id']
-        caption = request.form['caption']
-        img = request.files['img']
-        username = request.form['username']
+        user_id = request.json['user_id']
+        caption = request.json['caption']
+        img = request.json['img']
+        username = request.json['username']
 
         db.post(user_id, caption, img, username)
         response['status_code'] = 200
