@@ -293,6 +293,10 @@ class Database(object):
         self.cursor.execute("SELECT * FROM post WHERE post_id='{}'".format(post_id))
         return self.cursor.fetchone()
 
+    def get_all_posts(self):
+        self.cursor.execute('SELECT * FROM post')
+        return self.cursor.fetchall()
+
     def get_user_info(self, username):
         user = {}
         self.cursor.execute("SELECT user_id, profile_img FROM user where username='{}'".format(username))
@@ -486,10 +490,7 @@ def post():
         response['message'] = 'Post made successful'
 
     if request.method == 'GET':
-        with sqlite3.connect('polaroid.db') as conn:
-            cursor = conn.cursor()
-            cursor.execute('SELECT * FROM post')
-            response['posts'] = cursor.fetchall()
+        response['posts'] = db.get_all_posts()
 
         response['status_code'] = 200
         response['message'] = 'Posts retrieved successfully'
