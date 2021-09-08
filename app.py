@@ -391,7 +391,7 @@ class Database(object):
         return self.cursor.fetchall()
 
     def search(self, username_string):
-        self.cursor.execute("SELECT * FROM user WHERE username LIKE '{}%'".format(username_string))
+        self.cursor.execute("SELECT * FROM user WHERE username LIKE '%{}%'".format(username_string))
         return self.cursor.fetchall()
 
 
