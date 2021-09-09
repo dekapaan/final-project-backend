@@ -374,7 +374,7 @@ class Database(object):
         return self.cursor.fetchall()
 
     def get_user_likes(self, user_id):
-        self.cursor.execute("SELECT * FROM like WHERE user_id={}".format(user_id))
+        self.cursor.execute("SELECT * FROM like WHERE user_id='{}'".format(user_id))
         return self.cursor.fetchall()
 
     def add_comment(self, post_id, user_id, username, comment):
