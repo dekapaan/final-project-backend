@@ -440,6 +440,7 @@ def login(username):
 
 
 @app.route('/user/<int:user_id>', methods=['GET', 'PATCH', 'PUT'])
+@jwt_required()
 def user(user_id):
     response = {}
     db = Database()
@@ -483,6 +484,7 @@ def search(username_query):
 
 
 @app.route('/post/', methods=['GET', 'POST'])
+@jwt_required()
 def post():
     response = {}
 
@@ -507,6 +509,7 @@ def post():
     return response
 
 @app.route('/user-info/<username>/', methods=['GET'])
+@jwt_required()
 def get_user_post(username):
     response = {}
 
@@ -521,6 +524,7 @@ def get_user_post(username):
 
 
 @app.route('/delete_post/<post_id>', methods=['PATCH'])
+@jwt_required()
 def delete_post(post_id):
     response = {}
     db = Database()
@@ -534,6 +538,7 @@ def delete_post(post_id):
 
 
 @app.route('/follow/<int:user_id>/', methods=['GET', 'POST', 'PATCH'])
+@jwt_required()
 def follow(user_id):
     response = {}
 
@@ -561,6 +566,7 @@ def follow(user_id):
 
 
 @app.route('/follow/<int:user_id>')
+@jwt_required()
 def get_followers(user_id):
     response = {}
 
@@ -575,6 +581,7 @@ def get_followers(user_id):
     return response
 
 @app.route('/followers/<int:user_id>')
+@jwt_required()
 def get_followers_info(user_id):
     response = {}
 
@@ -589,6 +596,7 @@ def get_followers_info(user_id):
 
 
 @app.route('/following/<int:user_id>')
+@jwt_required()
 def get_following_info(user_id):
     response = {}
 
@@ -603,6 +611,7 @@ def get_following_info(user_id):
 
 
 @app.route('/posts/<int:user_id>', methods=['GET'])
+@jwt_required()
 def get_posts(user_id):
     response = {}
 
@@ -625,6 +634,7 @@ def get_posts(user_id):
 
 
 @app.route('/like/<int:post_id>/', methods=['GET', 'POST', 'PATCH'])
+@jwt_required()
 def like(post_id):
     response = {}
     db = Database()
@@ -652,6 +662,7 @@ def like(post_id):
 
 
 @app.route('/user-like/<user_id>/')
+@jwt_required()
 def get_liked_posts(user_id):
     response = {}
 
@@ -666,6 +677,7 @@ def get_liked_posts(user_id):
 
 
 @app.route('/comment/', methods=['POST'])
+@jwt_required()
 def comment():
     response = {}
     db = Database()
@@ -685,6 +697,7 @@ def comment():
 
 
 @app.route('/comment/<int:comment_id>/', methods=['PATCH'])
+@jwt_required()
 def delete_comment(comment_id):
     response = {}
     db = Database()
@@ -699,6 +712,7 @@ def delete_comment(comment_id):
 
 
 @app.route('/comment/<int:post_id>/', methods=['GET'])
+@jwt_required()
 def get_comment(post_id):
     response = {}
     db = Database()
