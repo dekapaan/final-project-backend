@@ -310,6 +310,14 @@ class Database(object):
 
         return user
 
+    def get_followers_info(self, user_id):
+        self.cursor.execute('SELECT username, profile_img FROM user where user_id={}'.format(user_id))
+        return self.cursor.fetchall()
+
+    def get_following_info(self, user_id):
+        self.cursor.execute('SELECT username, profile_img FROM user where user_id={}'.format(user_id))
+        return self.cursor.fetchall()
+
     def get_follow_posts(self, user_id_list):
         posts = []
 
@@ -370,11 +378,11 @@ class Database(object):
         self.conn.commit()
 
     def get_likes(self, post_id):
-        self.cursor.execute("SELECT * FROM like WHERE post_id='{}'".format(post_id))
+        self.cursor.execute("SELECT * FROM like WHERE post_id={}".format(post_id))
         return self.cursor.fetchall()
 
     def get_user_likes(self, user_id):
-        self.cursor.execute("SELECT * FROM like WHERE user_id='{}'".format(user_id))
+        self.cursor.execute("SELECT * FROM like WHERE user_id={}".format(user_id))
         return self.cursor.fetchall()
 
     def add_comment(self, post_id, user_id, username, comment):
@@ -458,6 +466,7 @@ def user(user_id):
     users = fetch_users()
 
     return response
+
 
 @app.route('/search/<username_query>/')
 def search(username_query):
@@ -562,6 +571,33 @@ def get_followers(user_id):
         response['following'] = db.get_following(user_id)
         response['status_code'] = 200
         response['message'] = 'User follow info retrieved successfully'
+
+    return response
+
+@app.route('/followers/<int:user_id>')
+def get_followers_info(user_id):
+    response = {}
+
+    db = Database()
+
+    if request.method == 'GET':
+        response['followers'] = db.get_followers_info(user_id)
+        response['status_code'] = 200
+        response['message'] = 'Followers info retrieved successfully'
+
+    return response
+
+
+@app.route('/following/<int:user_id>')
+def get_following_info(user_id):
+    response = {}
+
+    db = Database()
+
+    if request.method == 'GET':
+        response['following'] = db.get_following_info(user_id)
+        response['status_code'] = 200
+        response['message'] = 'Following info retrieved successfully'
 
     return response
 
