@@ -2,24 +2,27 @@ import hmac
 import sqlite3
 import datetime
 
+# flask modules
 from flask import Flask, request
 from flask_jwt import JWT, jwt_required, current_identity
 from flask_cors import CORS
 from flask_mail import Mail, Message
 
+# image upload module
 import cloudinary
 import cloudinary.uploader
 
 import DNS
 import validate_email
 
+# User class for jwt
 class User(object):
     def __init__(self, id, username, password):
         self.id = id
         self.username = username
         self.password = password
 
-
+# initiate user table
 def init_user_table():
     conn = sqlite3.connect('polaroid.db')
     print("Opened database successfully")
@@ -53,7 +56,7 @@ def init_post_table():
     print('post table created successfully')
     conn.close()
 
-
+# initiate comment table
 def init_comment_table():
     conn = sqlite3.connect('polaroid.db')
     print("Opened database successfully")
@@ -72,7 +75,7 @@ def init_comment_table():
     print('post table created successfully')
     conn.close()
 
-
+# initiate like table
 def init_like_table():
     conn = sqlite3.connect('polaroid.db')
     print('opened database successfully')
@@ -86,7 +89,7 @@ def init_like_table():
     print('like table create successfully')
     conn.close()
 
-
+# initiate follow table
 def init_follow_table():
     conn = sqlite3.connect('polaroid.db')
     print("opened database successfully")
@@ -102,30 +105,14 @@ def init_follow_table():
 
     conn.close()
 
-def init_dm_table():
-    conn = sqlite3.connect('polaroid.db')
-    conn.execute("CREATE TABLE IF NOT EXISTS dm("
-                 "dm_id INTEGER PRIMARY KEY AUTOINCREMENT,"
-                 "message TEXT NOT NULL,"
-                 "sender_id,"
-                 "sender_username,"
-                 "receiver_id,"
-                 "receiver_username,"
-                 "seen BOOLEAN NOT NULL,"
-                 "FOREIGN KEY (sender_id) REFERENCES user(user_id),"
-                 "FOREIGN KEY (sender_username) REFERENCES user(username),"
-                 "FOREIGN KEY (receiver_id) REFERENCES user(user_id),"
-                 "FOREIGN KEY (receiver_username) REFERENCES user(username))")
-
-    print("Table created successfully")
 
 init_user_table()
 init_post_table()
 init_comment_table()
 init_like_table()
 init_follow_table()
-init_dm_table()
 
+# fetch users from database
 def fetch_users():
     with sqlite3.connect('polaroid.db') as conn:
         cursor = conn.cursor()
@@ -139,11 +126,13 @@ def fetch_users():
     return new_data
 
 
+# user variable
 users = fetch_users()
 username_table = {u.username: u for u in users}
 userid_table = {u.id: u for u in users}
 
 
+# auth function (jwt)
 def authenticate(username, password):
     users = fetch_users()
     username_table = {u.username: u for u in users}
@@ -163,6 +152,7 @@ def identity(payload):
 app = Flask(__name__)
 app.debug = True
 
+# config jwt
 app.config['SECRET_KEY'] = 'super-secret'
 app.config['JWT_EXPIRATION_DELTA'] = datetime.timedelta(hours=24)   # Extending token expiration
 
@@ -177,39 +167,35 @@ app.config['MAIL_USE_SSL'] = True
 # mail instantiation
 mail = Mail(app)
 
+# JWT instantiation
 jwt = JWT(app, authenticate, identity)
 
+# CORS
 CORS(app)
 
-
+# JWT route
 @app.route('/protected')
 @jwt_required()
 def protected():
     return '%s' % current_identity
 
-
+# Database class
 class Database(object):
     def __init__(self):
+        # Establishing connection to database
         self.conn = sqlite3.connect('polaroid.db')
         self.conn.row_factory = self.dict_factory
         self.cursor = self.conn.cursor()
 
+    # renders database inquiries as key:value pairs
     def dict_factory(self, cursor, row):
         d = {}
         for idx, col in enumerate(cursor.description):
             d[col[0]] = row[idx]
         return d
 
+    # send registration details to user table
     def register(self, first_name, last_name, email, username, password):
-        # cloudinary.config(cloud_name='ddvdj4vy6', api_key='416417923523248',
-        #                   api_secret='v_bGoSt-EgCYGO2wIkFKRERvqZ0')
-        # upload_result = None
-        #
-        # app.logger.info('%s file_to_upload', profile_img)
-        # if profile_img:
-        #     upload_result = cloudinary.uploader.upload(profile_img)  # Upload results
-        #     app.logger.info(upload_result)
-
         self.cursor.execute('INSERT INTO user ('
                             'first_name,'
                             'last_name,'
@@ -221,14 +207,17 @@ class Database(object):
 
         return "success"
 
+    # fetches user with username as search filter
     def login(self, username):
         self.cursor.execute("SELECT * FROM user WHERE username='{}'".format(username))
         return self.cursor.fetchone()
 
+    # fetches user with user_id as search filter
     def get_user(self, user_id):
         self.cursor.execute("SELECT * FROM user WHERE user_id='{}'".format(user_id))
         return self.cursor.fetchall()
 
+    # update user in user table
     def update(self, user_id, data):
         if data.get('first_name'):
             self.cursor.execute('UPDATE user SET first_name=? WHERE user_id=?', (data.get('first_name'), user_id))
@@ -257,13 +246,18 @@ class Database(object):
             self.conn.commit()
 
         if data.get('username'):
-            self.cursor.execute('UPDATE user SET username=? WHERE user_id=?', (data.get('username'), user_id))
+            self.cursor.execute('SET foreign_key_checks = 0;')
+            self.cursor.execute('UPDATE comment SET username=? WHERE user_id=?;', (data.get('username'), user_id))
+            self.cursor.execute('UPDATE post SET username=? WHERE user_id=?;', (data.get('username'), user_id))
+            self.cursor.execute('UPDATE user SET username=? WHERE user_id=?;', (data.get('username'), user_id))
+            self.cursor.execute('SET foreign_key_checks = 1;')
             self.conn.commit()
 
         if data.get('password'):
             self.cursor.execute('UPDATE user SET password=? WHERE user_id=?', (data.get('password'), user_id))
             self.conn.commit()
 
+    # delete user from user table
     def delete_user(self, user_id):
         self.cursor.execute("DELETE FROM like WHERE user_id='{}'".format(user_id))
         self.cursor.execute("DELETE FROM dm WHERE sender ='{}'".format(user_id))
@@ -275,6 +269,7 @@ class Database(object):
         self.cursor.execute("DELETE FROM user WHERE user_id='{}'".format(user_id))
         self.conn.commit()
 
+    # add post to database
     def post(self, user_id, caption, img, username):
         cloudinary.config(cloud_name='ddvdj4vy6', api_key='416417923523248',
                           api_secret='v_bGoSt-EgCYGO2wIkFKRERvqZ0')
@@ -289,14 +284,17 @@ class Database(object):
                             (user_id, caption, upload_result['url'], username))
         self.conn.commit()
 
+    # get gost from post table with post_id as filter
     def get_post(self, post_id):
         self.cursor.execute("SELECT * FROM post WHERE post_id='{}'".format(post_id))
         return self.cursor.fetchone()
 
+    # fetch all posts
     def get_all_posts(self):
         self.cursor.execute('SELECT * FROM post')
         return self.cursor.fetchall()
 
+    # fetch user followers, posts, and user_id and profile_img
     def get_user_info(self, username):
         user = {}
         self.cursor.execute("SELECT user_id, profile_img FROM user where username='{}'".format(username))
@@ -310,14 +308,17 @@ class Database(object):
 
         return user
 
+    # fetch follower username and profile_img with user_id as filter
     def get_followers_info(self, user_id):
         self.cursor.execute('SELECT username, profile_img FROM user where user_id={}'.format(user_id))
         return self.cursor.fetchall()
 
+    # fetch following username and profile_img with user_id as filter
     def get_following_info(self, user_id):
         self.cursor.execute('SELECT username, profile_img FROM user where user_id={}'.format(user_id))
         return self.cursor.fetchall()
 
+    # fetch posts from people user is following
     def get_follow_posts(self, user_id_list):
         posts = []
 
@@ -335,10 +336,12 @@ class Database(object):
 
         return posts
 
+    # delete post from username
     def delete_post(self, post_id):
         self.cursor.execute("DELETE FROM post WHERE post_id='{}'".format(post_id))
         self.conn.commit()
 
+    # insert follow interaction to database
     def follow(self, follower, followed):
         self.cursor.execute('INSERT into follow ('
                             'follower,'
@@ -348,22 +351,26 @@ class Database(object):
 
         self.conn.commit()
 
+    # remove follow interaction from database
     def unfollow(self, follower, followed):
         self.cursor.execute('DELETE FROM follow WHERE followed=? and follower=?', (followed, follower))
         self.conn.commit()
 
+    # fetch followers user_ids with user_id as filter
     def get_followers(self, user_id):
         self.cursor.execute("SELECT follower, seen FROM follow WHERE followed='{}'".format(user_id))
         followers = self.cursor.fetchall()
 
         return followers
 
+    # fetch following user_ids with user_id as filter
     def get_following(self, user_id):
         self.cursor.execute("SELECT followed, seen FROM follow WHERE follower='{}'".format(user_id))
         following = self.cursor.fetchall()
 
         return following
 
+    # add like to database
     def like(self, user_id, post_id):
         self.cursor.execute('INSERT INTO like('
                             'post_id,'
@@ -373,41 +380,50 @@ class Database(object):
 
         self.conn.commit()
 
+    # remove like to database
     def unlike(self, user_id, post_id):
         self.cursor.execute("DELETE FROM like WHERE post_id=? AND user_id=?", (post_id, user_id))
         self.conn.commit()
 
+    # fetch likes
     def get_likes(self, post_id):
         self.cursor.execute("SELECT * FROM like WHERE post_id={}".format(post_id))
         return self.cursor.fetchall()
 
+    # fetch likes by user
     def get_user_likes(self, user_id):
         self.cursor.execute("SELECT * FROM like WHERE user_id={}".format(user_id))
         return self.cursor.fetchall()
 
+    # add comment to database
     def add_comment(self, post_id, user_id, username, comment):
         self.cursor.execute('INSERT INTO comment (user_id, username, post_id, comment, seen) VALUES (?, ?, ?, ?, 0)',
                             (user_id, username, post_id, comment))
         self.conn.commit()
 
+    # delete comment from database
     def delete_comment(self, comment_id):
         self.cursor.execute("DELETE FROM comment WHERE comment_id={}".format(comment_id))
         self.conn.commit()
 
+    # get comments with post_id as filter
     def get_comments(self, post_id):
         self.cursor.execute("SELECT * FROM comment WHERE post_id={}".format(post_id))
         return self.cursor.fetchall()
 
+    # search user table for users like username_string
     def search(self, username_string):
         self.cursor.execute("SELECT * FROM user WHERE username LIKE '%{}%'".format(username_string))
         return self.cursor.fetchall()
 
 
+# user endpoint
 @app.route('/user/', methods=['POST'])
 def register():
     response = {}
     db = Database()
 
+    # register
     if request.method == 'POST':
         first_name = request.json['first_name']
         last_name = request.json['last_name']
@@ -426,6 +442,7 @@ def register():
     return response
 
 
+# get user endpoint (login)
 @app.route('/user/<username>')
 def login(username):
     response = {}
@@ -445,11 +462,13 @@ def user(user_id):
     response = {}
     db = Database()
 
+    # get user with user_id
     if request.method == 'GET':
         response['status_code'] = 200
         response['message'] = "User retrieved successfully"
         response['user'] = db.get_user(user_id)
 
+    # update user
     if request.method == 'PATCH':
         incoming_data = dict(request.json)
         db.update(user_id, incoming_data)
@@ -457,18 +476,21 @@ def user(user_id):
         response['status_code'] = 200
         response['message'] = 'User details updated successfully'
 
+    # delete user
     if request.method == 'PUT':
         db.delete_user(user_id)
 
         response['status_code'] = 200
         response['message'] = 'User deleted successfully'
 
+    # update user variable
     global users
     users = fetch_users()
 
     return response
 
 
+# search endpoint
 @app.route('/search/<username_query>/')
 def search(username_query):
     response = {}
@@ -483,6 +505,7 @@ def search(username_query):
     return response
 
 
+# post endpoint
 @app.route('/post/', methods=['GET', 'POST'])
 @jwt_required()
 def post():
@@ -490,6 +513,7 @@ def post():
 
     db = Database()
 
+    # add post
     if request.method == 'POST':
         user_id = request.json['user_id']
         caption = request.json['caption']
@@ -500,6 +524,7 @@ def post():
         response['status_code'] = 200
         response['message'] = 'Post made successful'
 
+    # get posts
     if request.method == 'GET':
         response['posts'] = db.get_all_posts()
 
@@ -508,6 +533,8 @@ def post():
 
     return response
 
+
+# get all user info (posts, followers, following)
 @app.route('/user-info/<username>/', methods=['GET'])
 @jwt_required()
 def get_user_post(username):
@@ -523,6 +550,7 @@ def get_user_post(username):
     return response
 
 
+# delete post endpoint
 @app.route('/delete_post/<post_id>', methods=['PATCH'])
 @jwt_required()
 def delete_post(post_id):
@@ -537,6 +565,7 @@ def delete_post(post_id):
     return response
 
 
+# follow endpoint
 @app.route('/follow/<int:user_id>/', methods=['GET', 'POST', 'PATCH'])
 @jwt_required()
 def follow(user_id):
@@ -544,18 +573,21 @@ def follow(user_id):
 
     db = Database()
 
+    # get followers and following
     if request.method == 'GET':
         response['followers'] = db.get_followers(user_id)
         response['following'] = db.get_following(user_id)
         response['status_code'] = 200
         response['message'] = 'User follow info retrieved successfully'
 
+    # add follow interaction
     if request.method == "POST":
         followed = request.json['followed']
         db.follow(user_id, followed)
         response['status_code'] = 200
         response['message'] = 'Follow interaction successful'
 
+    # remove follow interaction (unfollow)
     if request.method == "PATCH":
         followed = request.json['followed']
         db.unfollow(user_id, followed)
@@ -565,21 +597,7 @@ def follow(user_id):
     return response
 
 
-@app.route('/follow/<int:user_id>')
-@jwt_required()
-def get_followers(user_id):
-    response = {}
-
-    db = Database()
-
-    if request.method == 'GET':
-        response['followers'] = db.get_followers(user_id)
-        response['following'] = db.get_following(user_id)
-        response['status_code'] = 200
-        response['message'] = 'User follow info retrieved successfully'
-
-    return response
-
+# get followers username profile_img endpoint
 @app.route('/followers/<int:user_id>')
 @jwt_required()
 def get_followers_info(user_id):
@@ -595,6 +613,7 @@ def get_followers_info(user_id):
     return response
 
 
+# get following username profile_img endpoint
 @app.route('/following/<int:user_id>')
 @jwt_required()
 def get_following_info(user_id):
@@ -610,6 +629,7 @@ def get_following_info(user_id):
     return response
 
 
+# post endpoint
 @app.route('/posts/<int:user_id>', methods=['GET'])
 @jwt_required()
 def get_posts(user_id):
@@ -617,6 +637,7 @@ def get_posts(user_id):
 
     db = Database()
 
+    # get following posts
     if request.method == 'GET':
         user_follow_data = db.get_following(user_id)
         user_id_list = []
@@ -633,17 +654,20 @@ def get_posts(user_id):
     return response
 
 
+# like endpoint
 @app.route('/like/<int:post_id>/', methods=['GET', 'POST', 'PATCH'])
 @jwt_required()
 def like(post_id):
     response = {}
     db = Database()
 
+    # get likes
     if request.method == 'GET':
         response['status_code'] = 200
         response['message'] = 'Retrieved like information successfully'
         response['like_data'] = db.get_likes(post_id)
 
+    # add like
     if request.method == 'POST':
         user_id = request.json['user_id']
         db.like(user_id, post_id)
@@ -651,6 +675,7 @@ def like(post_id):
         response['status_code'] = 200
         response['message'] = 'Like successful'
 
+    # remove like
     if request.method == 'PATCH':
         user_id = request.json['user_id']
         db.unlike(user_id, post_id)
@@ -661,6 +686,7 @@ def like(post_id):
     return response
 
 
+# get user likes endpoint
 @app.route('/user-like/<user_id>/')
 @jwt_required()
 def get_liked_posts(user_id):
@@ -676,12 +702,14 @@ def get_liked_posts(user_id):
     return response
 
 
+# comment endpoint (add)
 @app.route('/comment/', methods=['POST'])
 @jwt_required()
 def comment():
     response = {}
     db = Database()
 
+    # add comment
     if request.method == 'POST':
         post_id = request.json['post_id']
         comment = request.json['comment']
@@ -696,12 +724,14 @@ def comment():
     return response
 
 
+# comment endpoint (delete)
 @app.route('/comment/<int:comment_id>/', methods=['PATCH'])
 @jwt_required()
 def delete_comment(comment_id):
     response = {}
     db = Database()
 
+    # delete comment
     if request.method == 'PATCH':
         db.delete_comment(comment_id)
 
@@ -711,6 +741,7 @@ def delete_comment(comment_id):
     return response
 
 
+# comment endpoint (post specific)
 @app.route('/comment/<int:post_id>/', methods=['GET'])
 @jwt_required()
 def get_comment(post_id):
@@ -725,5 +756,6 @@ def get_comment(post_id):
     return response
 
 
+# run app
 if __name__ == '__main__':
     app.run(debug=True)
