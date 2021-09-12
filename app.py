@@ -246,11 +246,11 @@ class Database(object):
             self.conn.commit()
 
         if data.get('username'):
-            self.cursor.execute('SET foreign_key_checks = 0;')
+            self.cursor.execute('PRAGMA foreign_keys = OFF;')
             self.cursor.execute('UPDATE comment SET username=? WHERE user_id=?;', (data.get('username'), user_id))
             self.cursor.execute('UPDATE post SET username=? WHERE user_id=?;', (data.get('username'), user_id))
             self.cursor.execute('UPDATE user SET username=? WHERE user_id=?;', (data.get('username'), user_id))
-            self.cursor.execute('SET foreign_key_checks = 1;')
+            self.cursor.execute('PRAGMA foreign_keys = ON;')
             self.conn.commit()
 
         if data.get('password'):
